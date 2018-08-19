@@ -1,6 +1,7 @@
-# Import multi-threading packages
 # Import GUI related packages
 import tkinter  as tk
+
+# Import multi-threading packages
 from multiprocessing import Queue
 from threading import Thread, Event
 
