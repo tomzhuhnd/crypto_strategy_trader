@@ -13,22 +13,21 @@ class gui_manager(Thread):
 
         # Class identifiers
         self.__name = 'gui'
-        self.__type = 'gui'
 
         # Print to terminal for initialization alert
-        print(self.__type + ' : ' + self.__name + ' - initializing ... ', end='')
+        print(self.__name + ' thread - Initializing ... ', end='')
 
         # Class queues
-        self._inbound_q = in_q
-        self._outbound_q = Queue()
-        self._status_q = status_q
+        self.inbound_q = in_q
+        self.outbound_q = Queue()
+        self.status_q = status_q
 
         # Class event flags
         self._stopped = Event()
 
         # Class command handlers
         self._command_handlers = {
-            'raw_print': self.raw_print
+
         }
 
         # Successful initialization, print to terminal
@@ -39,6 +38,8 @@ class gui_manager(Thread):
 
     # Startup of thread mainloop
     def run(self):
+
+        print(self.__name + ' thread - Starting.')
 
         # Generate tkinter master window
         self.gui_root = tk.Tk()
@@ -53,19 +54,19 @@ class gui_manager(Thread):
         # Check if stopped has been set
         if not self._stopped.is_set():
             # Check if anything is in the queue
-            if not self._inbound_q.empty():
+            if not self.inbound_q.empty():
                 # Error handler wrapper just in case
                 try:
-                    src_type, src_name, tgt_type, tgt_name, tgt_command, tgt_payload = self._inbound_q.get(timeout=0.1)
+                    src_name, tgt_name, tgt_command, tgt_payload = self.inbound_q.get(timeout=0.1)
                     if tgt_command in self._command_handlers:
                         # Call appropriate command handler
                         self._command_handlers[tgt_command](
-                            src_type, src_name, tgt_type, tgt_name, tgt_payload
+                            src_name, tgt_name, tgt_payload
                         )
                     else:
-                        print(self.__type + ' : ' + self.__name + ' - No event handler for ' + tgt_command + '!')
+                        print(self.__name + ' - No event handler for ' + tgt_command + '!')
                 except Exception as e:
-                    print(self.__type + ' : ' + self.__name + ' exception error! Exception: ' + str(e))
+                    print(self.__name + ' exception error! Exception: ' + str(e))
             # Run tkinter gui update commands
 
             # Recall main run loop
@@ -83,12 +84,3 @@ class gui_manager(Thread):
         # Set stop event
         self._stopped.set()
         return
-
-    # Function to print directly to terminal
-    def raw_print(self, source_type, source_name, target_type, target_name, target_payload):
-
-        # Check to see if there is a string that needs to be added to end of terminal print
-        if target_payload[1] is None:
-            print(target_payload[0])
-        else:
-            print(target_payload[0], end=target_payload[1])
