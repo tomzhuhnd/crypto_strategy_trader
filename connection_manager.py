@@ -83,7 +83,7 @@ class bfx_websocket(Thread):
         self.connected.set()
         nonce = str(int(time.time() * 1000000))
         auth_payload = 'AUTH' + nonce
-        signature = hmac.new(self.__api_skey, auth_payload.encode(), hashlib.sha384)
+        signature = hmac.new(self.__api_skey, auth_payload.encode(), hashlib.sha384).hexdigest()
         payload = {
             'apiKey': self.__api_pkey,
             'event': 'auth',
