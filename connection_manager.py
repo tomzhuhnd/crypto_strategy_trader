@@ -43,7 +43,7 @@ class bfx_websocket(Thread):
     # Connect handler
     def connect(self):
         # Start the websocket object
-        websocket.enableTrace(True)
+        websocket.enableTrace(False)
         self.ws = websocket.WebSocketApp(
             self.__url,
             on_open=self._on_bfxAuthOpen,

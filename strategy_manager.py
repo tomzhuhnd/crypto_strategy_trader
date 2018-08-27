@@ -107,8 +107,8 @@ class strategy_manager(Thread):
         # Stopped function was called, close all threads and exit
         print(self.__name + ' thread - Stopping program. Shutting down sub-thread processes.')
         self.thread_gui_pointer.stop()
-        # Wait 3 seconds for all threads to stop, then close main thread
-        time.sleep(3)
+        # Wait 1 second for all threads to stop, then close main thread
+        time.sleep(1)
         return
 
     def stop(self, src_name, tgt_name):
