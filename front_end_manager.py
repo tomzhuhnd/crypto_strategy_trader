@@ -2,28 +2,28 @@
 import tkinter  as tk
 
 # Import multi-threading packages
-from multiprocessing import Queue
 from threading import Thread, Event
 
 
 class gui_manager(Thread):
 
     # Initialization function
-    def __init__(self, in_q, status_q):
+    def __init__(self, in_q, out_q, status_q, cmd_flag):
 
         # Class identifiers
         self.__name = 'gui'
 
         # Print to terminal for initialization alert
-        print(self.__name + ' thread - Initializing ... ', end='')
+        print(self.__name + ' thread - initializing ... ', end='')
 
         # Class queues
         self.inbound_q = in_q
-        self.outbound_q = Queue()
+        self.outbound_q = out_q
         self.status_q = status_q
 
         # Class event flags
         self._stopped = Event()
+        self.command_flag = cmd_flag
 
         # Class command handlers
         self._command_handlers = {
@@ -64,9 +64,9 @@ class gui_manager(Thread):
                             src_name, tgt_name, tgt_payload
                         )
                     else:
-                        print(self.__name + ' - No event handler for ' + tgt_command + '!')
+                        print(self.__name + ' thread - No event handler for ' + tgt_command + '!')
                 except Exception as e:
-                    print(self.__name + ' exception error! Exception: ' + str(e))
+                    print(self.__name + ' thread exception error! Exception: ' + str(e))
             # Run tkinter gui update commands
 
             # Recall main run loop
@@ -75,6 +75,7 @@ class gui_manager(Thread):
         # Stopped flag on | Turn off gui front end
         else:
             # Exit out of tkinter GUI interface, close out all variables to none, join thread
+            print(self.__name + ' thread - Shutting down.')
             self.gui_root.destroy()
             self.gui_root.quit()
             return

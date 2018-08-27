@@ -7,6 +7,7 @@ import time
 
 # Import Project packages
 import front_end_manager
+import connection_manager
 
 
 # Master thread for controlling all processes
@@ -18,24 +19,34 @@ class strategy_manager(Thread):
         # Class identifier
         self.__name = 'strategy_manager'
 
+        print(self.__name + ' thread - initializing ... ', end='')
+
         # Dictionary for thread statuses
         self.thread_status = {}
 
         # Thread pointers
-        self.thread_pointers = {}
+        self.thread_gui_pointer = None
+        self.thread_bfx_ws_pointer = None
 
-        # Thread queues
-        self.thread_queues = {}
+        # Thread to queues
+        self.to_gui_queue = Queue()
+
+        # Thread from queues
+        self.from_gui_queue = Queue()
+        self.from_bfx_ws_queue = Queue()
+
+        # Thread events
+        self.gui_command_flag = Event()
 
         # Class queues
         self.in_q = in_q
         self.status_q = Queue()
 
         # Class events
-        self._stopped = Event()
+        self.stopped = Event()
 
         # Initializaiton of variables complete | Initialize thread instance
-        print(self.__name + ' - successfully initialized.')
+        print('Done.')
         super(strategy_manager, self).__init__()
 
     def run(self):
@@ -45,35 +56,57 @@ class strategy_manager(Thread):
         self.status_q.put((self.__name, True))
 
         # Starting thread
-        print(self.__name + ' - started.')
+        print(self.__name + ' thread - started.')
 
         # gui_manager thread | Initialize and start
         try:
-            # Create queues for gui manager
-            self.thread_queues['gui'] = {}
-            self.thread_queues['gui']['to'] = Queue()
-            self.thread_queues['gui']['from'] = None
-
             # Initialize gui manager thread instance
-            self.thread_pointers['gui'] = front_end_manager.gui_manager(
-                self.thread_queues['gui']['to'],
-                self.status_q
+            self.thread_gui_pointer = front_end_manager.gui_manager(
+                self.to_gui_queue,
+                self.from_gui_queue,
+                self.status_q,
+                self.gui_command_flag
             )
-            self.thread_queues['gui']['from'] = self.thread_pointers['gui'].outbound_q
-
         except Exception as e:
             print('Initialization of GUI thread has failed!')
-            print('\tException during initialization of gui_thread: ' + str(e))
+            print('\tException message: ' + str(e))
             print('Exiting.')
             return
         # Start thread
-        self.thread_pointers['gui'].start()
+        self.thread_gui_pointer.start()
 
-        print('All initialization procedures complete, shutting down')
-        time.sleep(3)
+        # bfx_ws thread | Initialize and start
+        try:
+            # Initialize BFX_WS manager thread instance
+            self.thread_bfx_ws_pointer = connection_manager.bfx_websocket(
+                self.from_bfx_ws_queue
+            )
+        except Exception as e:
+            print('Initialization of bfx_ws has failed!')
+            print('\tException message: ' +str(e))
+            print('Exiting.')
+            return
+        # Start thread
+        self.thread_bfx_ws_pointer.start()
 
-        # Stop function calls
-        self.thread_pointers['gui'].stop()
+        # All threads are started | Start the main loop
+        print(self.__name + ' thread - All initialization procedures complete. Starting main loop.')
+
+        # Main loop
+        while not self.stopped.is_set():
+
+            # Handle GUI commands as they come in
+            if self.gui_command_flag.is_set():
+                if not self.from_gui_queue.empty():
+                    src_name, tgt_name, tgt_command, tgt_payload = self.from_gui_queue.get(timeout=0.1)
+                    print(src_name, tgt_name, tgt_command, tgt_payload)
+                    # Reset flag
+                    self.gui_command_flag.clear()
+                    # TODO: Add proper command handler for incoming gui queue
+
+        # Stopped function was called, close all threads and exit
+        print(self.__name + ' thread - Stopping program. Shutting down sub-thread processes.')
+        self.thread_gui_pointer.stop()
         # Wait 3 seconds for all threads to stop, then close main thread
         time.sleep(3)
         return
@@ -81,10 +114,10 @@ class strategy_manager(Thread):
     def stop(self, src_name, tgt_name):
 
         print('Stop program called by: ' + src_name)
-        self._stopped.set()
+        self.stopped.set()
         return
 
     def error_exit(self):
         print('Forced exit due to error')
-        self._stopped.set()
+        self.stopped.set()
         super(strategy_manager, self).join(timeout=1)
