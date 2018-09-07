@@ -1,87 +1,87 @@
-# Import GUI related packages
-import tkinter  as tk
+# Import generic packages
+import time
 
-# Import multi-threading packages
+# Import multi-threading capacity
+from multiprocessing import Queue
 from threading import Thread, Event
+
+# Import GUI packages
+import tkinter      as tk
+import tkinter.font as tkfont
+import tkinter.ttk  as ttk
 
 
 class gui_manager(Thread):
 
-    # Initialization function
-    def __init__(self, in_q, out_q, status_q, cmd_flag):
+    def __init__(self, outbound_queue, inbound_queue):
 
-        # Class identifiers
+        # Class name
         self.__name = 'gui'
-
-        # Print to terminal for initialization alert
         print(self.__name + ' thread - initializing ... ', end='')
 
-        # Class queues
-        self.inbound_q = in_q
-        self.outbound_q = out_q
-        self.status_q = status_q
+        # Class variables
 
-        # Class event flags
+        # Class queues
+        self.inbound_q  = inbound_queue
+        self.outbound_q = outbound_queue
+
+        # Class events
         self._stopped = Event()
-        self.command_flag = cmd_flag
 
         # Class command handlers
-        self._command_handlers = {
+        self.command_handlers = {
 
         }
 
-        # Successful initialization, print to terminal
-        print('Done.')
-
-        # Initialization of variables complete | Initialize thread instance
+        print('done.')
         super(gui_manager, self).__init__()
 
-    # Startup of thread mainloop
     def run(self):
 
-        print(self.__name + ' thread - Starting.')
+        print(self.__name + ' thread - starting.')
 
         # Generate tkinter master window
         self.gui_root = tk.Tk()
 
-        # Call recursive run_function to constantly update tkinter gui
-        self.gui_root.after(1, self.run_gui)
-        self.gui_root.mainloop()
+        # Instantiate window classes
+        self.main_window = main_window(self.gui_root, self.inbound_q, self.outbound_q)
 
-    # Main run loop for tkinter gui
+        self.gui_root.after(0, self.run_gui)
+
     def run_gui(self):
 
-        # Check if stopped has been set
+        # Gui main loop
         if not self._stopped.is_set():
-            # Check if anything is in the queue
             if not self.inbound_q.empty():
-                # Error handler wrapper just in case
-                try:
-                    src_name, tgt_name, tgt_command, tgt_payload = self.inbound_q.get(timeout=0.1)
-                    if tgt_command in self._command_handlers:
-                        # Call appropriate command handler
-                        self._command_handlers[tgt_command](
-                            src_name, tgt_name, tgt_payload
-                        )
-                    else:
-                        print(self.__name + ' thread - No event handler for ' + tgt_command + '!')
-                except Exception as e:
-                    print(self.__name + ' thread exception error! Exception: ' + str(e))
-            # Run tkinter gui update commands
-
-            # Recall main run loop
-            self.gui_root.after(1, self.run_gui)
-
-        # Stopped flag on | Turn off gui front end
+                src_name, tgt_name, cmd_name, payload = self.inbound_q.get()
+                if cmd_name not in self.command_handlers:
+                    print(self.__name + ' thread - No handler for ' + cmd_name)
+                else:
+                    self.command_handlers[cmd_name](src_name, tgt_name, cmd_name, payload)
+                self.gui_root.update()
+                self.gui_root.after(0, self.run_gui)
         else:
-            # Exit out of tkinter GUI interface, close out all variables to none, join thread
-            print(self.__name + ' thread - Shutting down.')
+            # Todo: set all tkinter varaibles to None on exit
             self.gui_root.destroy()
             self.gui_root.quit()
-            return
 
-    # Function to set the stopped event flag
     def stop(self):
-        # Set stop event
+        # Set Stop event
+        print(self.__name + ' thread - Shutting down.')
         self._stopped.set()
-        return
+        time.sleep(1)
+        super(gui_manager, self).join(timeout=1)
+        return True
+
+class main_window:
+
+    def __init__(self, gui_root, inbound_q, outbound_q):
+
+        # Class internal variables
+        self.__name = 'gui'
+        self.gui_root = gui_root
+        self.gui_root.title('Program')
+        self.frame = tk.Frame(self.gui_root)
+
+
+
