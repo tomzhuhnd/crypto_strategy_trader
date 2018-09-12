@@ -14,7 +14,7 @@ from api_keys import *
 
 
 # URLs
-bfx_url = 'wss://api.bitfinex.com/ws/'
+url_bfx = 'wss://api.bitfinex.com/ws/'
 
 # BFX Websocket class
 class bfx_websocket(Thread):
@@ -33,14 +33,31 @@ class bfx_websocket(Thread):
         self.isActive = False
 
         # Internal class events
-        self._connected = Event()
-        self._disconnect_call = Event()
+        self.connected = Event()
+        self.disconnected = Event()
         self._pause = Event()
 
         # Establish as new independent thread
         Thread.__init__(self)
         self.daemon = True
         print('done.')
+
+    def connect(self):
+        # Start the websocket object
+        websocket.enableTrace(False)
+        self.ws = websocket.WebSocketApp(
+            url_bfx,
+            on_open=self._bfx_auth_open,
+            on_close=self._on_close,
+            on_error=self._on_error,
+            on_message=self._on_message
+        )
+        # Run loop
+        self.ws.run_forever()
+
+        while not self.disconnected.is_set():
+            self.ws.keep_running = True
+            self.ws.run_forever()
 
     def _bfx_auth_open(self, ws):
 
@@ -54,3 +71,24 @@ class bfx_websocket(Thread):
             'authNonce': nonce,
             'authSig': signature
         }
+
+        # Send payload to establish authenticated connection to account
+        print(self.__name + ' thread - Establishing authenticated connection to account.')
+        try:
+            self.ws.send(json.dumps(payload))
+        except websocket.WebSocketConnectionClosedException:
+            print(self.__name + ' thread - Exception! Payload failed to send, websocket connection is closed!')
+        except Exception as e:
+            print(self.__name + ' thread - Exception! Exception type: ' + str(e))
+
+    def _on_close(self, ws):
+        self.connected.clear()
+        self.disconnected.clear()
+        print(self.__name + ' thread - Websocket connection has been closed.')
+
+    def _on_error(self, ws, error):
+        print(error)
+        # Todo: Create an actual error handlers
+
+    def _on_message(self, ws, message):
+        pass
