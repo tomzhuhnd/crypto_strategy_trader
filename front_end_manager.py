@@ -47,19 +47,21 @@ class gui_manager(Thread):
         self.main_window = main_window(self.gui_root, self.inbound_q, self.outbound_q)
 
         self.gui_root.after(0, self.run_gui)
+        self.gui_root.mainloop()
 
     def run_gui(self):
 
         # Gui main loop
         if not self._stopped.is_set():
             if not self.inbound_q.empty():
-                src_name, tgt_name, cmd_name, payload = self.inbound_q.get()
-                if cmd_name not in self.command_handlers:
-                    print(self.__name + ' thread - No handler for ' + cmd_name)
+                src_name, tgt_name, command, payload = self.inbound_q.get()
+                if command not in self.command_handlers:
+                    print(self.__name + ' thread - No handler for ' + command)
                 else:
-                    self.command_handlers[cmd_name](src_name, tgt_name, cmd_name, payload)
-                self.gui_root.update()
-                self.gui_root.after(0, self.run_gui)
+                    self.command_handlers[command](src_name, tgt_name, command, payload)
+
+            self.gui_root.update()
+            self.gui_root.after(0, self.run_gui)
         else:
             # Todo: set all tkinter varaibles to None on exit
             self.gui_root.destroy()
@@ -69,9 +71,6 @@ class gui_manager(Thread):
         # Set Stop event
         print(self.__name + ' thread - Shutting down.')
         self._stopped.set()
-        time.sleep(1)
-        super(gui_manager, self).join(timeout=1)
-        return True
 
 class main_window:
 
@@ -82,6 +81,29 @@ class main_window:
         self.gui_root = gui_root
         self.gui_root.title('Program')
         self.frame = tk.Frame(self.gui_root)
+        self.inbound_q = inbound_q
+        self.outbound_q = outbound_q
 
 
+        # Window grid objects
+        self._tk_grid_obj = {
+            0: {0: None}
+        }
+        # Window grid variables
+        self._tk_var_obj = {
+            0: {0: 'Stop Main Program'}
+        }
 
+        # ========================================== GRID OBJECTS ========================================== #
+        # ============================================== ROW 0 ============================================= #
+        self._tk_grid_obj[0][0] = tk.Button(
+            self.gui_root,
+            text=self._tk_var_obj[0][0],
+            command=self.button_stop_main
+        )
+        self._tk_grid_obj[0][0].grid(row=0, column=0, padx=5, pady=5,
+                                     sticky=('N', 'W', 'E', 'S'))
+
+    # ========================================== Button Commands ========================================== #
+    def button_stop_main(self):
+        self.outbound_q.put((self.__name, 'master', 'stop_all', None))

@@ -1,3 +1,9 @@
+# Import default libraries
+import time
+import json, requests
+import hmac, hashlib
+
+# Import connectivity libraries
 import websocket
 
 # Import multi-threading libraries
@@ -24,7 +30,7 @@ class bfx_websocket(Thread):
         self.__skey = bfx_api_skey
 
         # Internal status variables
-        self.isActive = True
+        self.isActive = False
 
         # Internal class events
         self._connected = Event()
@@ -36,3 +42,15 @@ class bfx_websocket(Thread):
         self.daemon = True
         print('done.')
 
+    def _bfx_auth_open(self, ws):
+
+        nonce = str(int(time.time() * 1000000))
+        auth_payload = 'AUTH' + nonce
+        signature = hmac.new(self.__skey, auth_payload.encode(), hashlib.sha384).hexdigest
+        payload = {
+            'apiKey': self.__key,
+            'event': 'auth',
+            'authPayload': auth_payload,
+            'authNonce': nonce,
+            'authSig': signature
+        }
