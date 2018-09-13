@@ -5,7 +5,9 @@ import time
 from multiprocessing    import Queue
 from threading          import Thread, Event
 
+# Program packages
 import front_end_manager
+import websocket_packages
 
 class program_master(Thread):
 
@@ -23,6 +25,7 @@ class program_master(Thread):
 
         # Thread pointers
         self._gui_thread = None
+        self._bfx_thread = None
 
         # Thread statuses
         self.thread_status = {}
@@ -63,6 +66,12 @@ class program_master(Thread):
         self.thread_status['gui'] = True
         self.thread_command_handlers['gui'] = self._gui_thread.command_handlers
 
+        # Start bfx_ws Thread
+        self._bfx_thread = websocket_packages.bfx_websocket()
+        self._bfx_thread.start()
+        self.thread_status['bfx_ws'] = True
+
+
         # Main Loop
         while not self.stopped.is_set():
 
@@ -76,6 +85,7 @@ class program_master(Thread):
 
             print(self.__name + ' thread - Main Program shutting down, killing child threads.')
             self._gui_thread.stop()
+            self._bfx_thread.stop()
             time.sleep(0.5)
             print(self.__name + ' thread - Exiting.')
             return
