@@ -69,6 +69,24 @@ class bfx_websocket(Thread):
         print(self.__name + ' thread - starting.')
         self._connect()
 
+    def stop(self):
+
+        # Disconnect event
+        self._disconnected.set()
+        try:
+            # Check ws connection, close if its open
+            if self.ws:
+                self.ws.close()
+            self._isActive = False
+            # Give thread a second to process close operation
+            self.join(timeout=1)
+            return True
+        except Exception as e:
+            print(self.__name + ' thread - Error on stop! Error code: ' + str(e))
+            return False
+
+    # ===================================== Main Loop for websocket connection ===================================== #
+
     def _connect(self):
         # Start the websocket object
         websocket.enableTrace(False)
@@ -88,26 +106,11 @@ class bfx_websocket(Thread):
             self.ws.keep_running = True
             self.ws.run_forever()
 
-    def stop(self):
-
-        # Disconnect event
-        self._disconnected.set()
-        try:
-            # Check ws connection, close if its open
-            if self.ws:
-                self.ws.close()
-            self._isActive = False
-            # Give thread a second to process close operation
-            self.join(timeout=1)
-            return True
-        except Exception as e:
-            print(self.__name + ' thread - Error on stop! Error code: ' + str(e))
-            return False
-
         # ===================================== Connection functions ===================================== #
 
     def _bfx_auth_open(self, ws):
 
+        # Create encoded payload for authentication
         nonce = str(int(time.time() * 1000000))
         auth_payload = 'AUTH' + nonce
         signature = hmac.new(self.__skey, auth_payload.encode(), hashlib.sha384).hexdigest()
@@ -180,6 +183,9 @@ class bfx_websocket(Thread):
 
             else:
                 print(self.__name + ' thread - Warning! Received an unmapped channel data message. Raw data: ' + str(data))
+
+    # ===================================== External Facing Functions ===================================== #
+
 
     # ===================================== Event handlers ===================================== #
 
