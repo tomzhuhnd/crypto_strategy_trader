@@ -7,7 +7,9 @@ from threading          import Thread, Event
 
 # Program packages
 import front_end_manager
-import websocket_packages
+
+# Websocket packages
+import ws_bfx_handler
 
 class program_master(Thread):
 
@@ -18,7 +20,7 @@ class program_master(Thread):
         print(self.__name + ' thread - initializing ... ', end='')
 
         # Class internal variables
-        self.__sleep_timer = 1
+        self.__sleep_timer = 0.01
 
         # Class internal events
         self.stopped = Event()
@@ -67,10 +69,13 @@ class program_master(Thread):
         self.thread_command_handlers['gui'] = self._gui_thread.command_handlers
 
         # Start bfx_ws Thread
-        self._bfx_thread = websocket_packages.bfx_websocket()
+        self._bfx_thread = ws_bfx_handler.bfx_websocket()
         self._bfx_thread.start()
         self.thread_status['bfx_ws'] = True
 
+        # Wait for websocket to establish connections before sending subscription requests
+        time.sleep(1)
+        self._bfx_thread.subscribe_to_channel('ticker', 'BTCUSD')
 
         # Main Loop
         while not self.stopped.is_set():

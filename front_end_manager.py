@@ -21,6 +21,7 @@ class gui_manager(Thread):
 
         # Class variables
 
+
         # Class queues
         self.inbound_q  = inbound_queue
         self.outbound_q = outbound_queue
