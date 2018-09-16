@@ -52,7 +52,8 @@ class bfx_websocket(Thread):
 
         # Data handlers
         self._data_handlers = {
-            'account': self.__process_data_account
+            'account': self.__process_data_account,
+            'ticker': self.__process_data_ticker
         }
 
         # Data handlers
@@ -254,8 +255,7 @@ class bfx_websocket(Thread):
         if 'status' in data and data['status'] == 'OK':             # Authenticated channel subscription successful
             self._channel_ids[('account', data['chanId'])] = data['chanId']
             self._channel_ids[data['chanId']] = ('account', data['chanId'])
-            print(self.__name + ' thread - Authenticated account channel created. ChanId: ' +
-                  str(self._channel_ids['account']))
+            print(self.__name + ' thread - Authenticated account channel created. ChanId: ' + str(data['chanId']))
         else:
             print(self.__name + ' thread - BFX Websocket failed to establish authenticated channel subscription!')
             # Todo: Add handlers that will try to re-authenticate when the initial auth. fails
@@ -265,10 +265,14 @@ class bfx_websocket(Thread):
         self._channel_ids[data['chanId']] = (data['channel'], data['pair'])
         self._channel_ids[(data['channel'], data['pair'])] = data['chanId']
         print(self.__name + ' thread - Successful subscription to CHANNEL: "' + str(data['channel'])
-              + '" | PAIR: "' + data['pair'] + '".')
+              + '" | PAIR: "' + data['pair'] + '" | ChanID: ' + str(data['chanId']) + '.')
 
-        print(self._channel_ids)
+    # ===================================== Ticker Data handlers ===================================== #
 
+    def __process_data_ticker(self, data):
+
+        print('Ticker data received')
+        print(data)
 
     # ===================================== Account Data handlers ===================================== #
 
