@@ -204,14 +204,13 @@ class bfx_websocket(Thread):
     def subscribe_to_channel(self, channel, pair):
 
         channel = channel.lower()
-        pair = pair.upper()
 
         # Check if channel is a proper channel subscription
         if channel in ws_bfx_settings.bfx_public_channels:
             if pair in ws_bfx_settings.bfx_trading_pairs:
 
                 # Generate subscription payload
-                if channel == 'book':
+                if channel != 'book':
                     payload = {'event': 'subscribe', 'channel': channel, 'pair': pair}
                 else:
                     payload = {'event': 'subscribe', 'channel': channel, 'pair': pair,

@@ -4,7 +4,8 @@
 # ======================================================================================== #
 
 bfx_public_channels = ['ticker', 'trades', 'book']
-bfx_trading_pairs = ['BTCUSD', 'ETHUSD']
+bfx_trading_pairs = ['tBTCUSD', 'tETHUSD',
+                     'fBTC']
 
 
 bfx_book_pair_precision = {
