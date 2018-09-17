@@ -1,0 +1,28 @@
+# Funding Credit Snapshot
+- Need to add the MySQL integration to handle updates/snapshots
+        - I want to have parent-child relationship table for all the funding
+- May need to have a more sophisticated handler for the status
+
+      [Snapshot Data Format]
+      ID,			    114273599, 			0
+      SYMBOL,			'fETH', 			1
+      SIDE,			    1,				    2
+      MTS_CREATE,		1537151895000,		3
+      MTS_UPDATE,		1537153569000, 		4
+      AMOUNT,			0.46672389,			5
+      FLAGS,			0,				    6
+      STATUS,			'ACTIVE',			7
+      _PLACEHOLDER,		None, 				8
+      _PLACEHOLDER,		None, 				9
+      _PLACEHOLDER,		None, 				10
+      RATE,			    0.000328,			11
+      PERIOD,			2,				    12
+      MTS_OPENING,		1537151895000,		13
+      MTS_LAST_PAYOUT,	1537153569000,		14
+      NOTIFY,			0,   				15
+      HIDDEN,			0,				    16
+      _PLACEHOLDER,		None,				17
+      RENEW,			0, 				    18
+      RATE_REAL,		None, 				19
+      NO_CLOSE,			0, 				    20
+      POSITION_PAIR,	None				21

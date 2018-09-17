@@ -73,9 +73,9 @@ class program_master(Thread):
         self._bfx_thread.start()
         self.thread_status['bfx_ws'] = True
 
-        # Wait for websocket to establish connections before sending subscription requests
-        time.sleep(1)
-        self._bfx_thread.subscribe_to_channel('ticker', 'BTCUSD')
+        # # Wait for websocket to establish connections before sending subscription requests
+        # time.sleep(1)
+        # self._bfx_thread.subscribe_to_channel('ticker', 'BTCUSD')
 
         # Main Loop
         while not self.stopped.is_set():

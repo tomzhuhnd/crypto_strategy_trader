@@ -1,5 +1,5 @@
 # Import default libraries
-import time
+import time, datetime
 import json, requests
 import hmac, hashlib
 
@@ -17,7 +17,7 @@ from api_keys import *
 import ws_bfx_settings
 
 # URLs
-url_bfx = 'wss://api.bitfinex.com/ws/'
+url_bfx = 'wss://api.bitfinex.com/ws/2'
 
 # BFX Websocket class
 class bfx_websocket(Thread):
@@ -53,22 +53,27 @@ class bfx_websocket(Thread):
         # Data handlers
         self._data_handlers = {
             'account': self.__process_data_account,
-            'ticker': self.__process_data_ticker
+            'ticker':  self.__process_data_ticker
         }
 
         # Data handlers
         self._data_account_handlers = {
-            'ps': self.__handle_data_account_ps,
-            'ws': self.__handle_data_account_ws,
-            'os': self.__handle_data_account_os,
-            'hb': self.__handle_data_account_hb
+            'ps':  self.__handle_data_account_ps,
+            'ws':  self.__handle_data_account_ws,
+            'os':  self.__handle_data_account_os,
+            'fcs': self.__handle_data_account_fcs,
+            'fls': self.__handle_data_account_fls,
+            'fos': self.__handle_data_account_fos
         }
+
+        # Data Grids
+        self.account_balances = {'exchange': {}, 'margin': {}, 'funding': {}}
+        self.account_orders = {}
+        self.account_funding_positions = {}
 
         # Websocket specific variables
         self.ws_version = None
         self.ws_userid  = None
-        self.account_balances = {'exchange': {}, 'margin': {}, 'funding': {}}
-        self.account_orders = {}
 
         # Establish as new independent thread
         Thread.__init__(self)
@@ -154,8 +159,6 @@ class bfx_websocket(Thread):
 
     def _on_message(self, ws, message):
 
-        # print('Raw print: ' + str(message))
-
         # Decode incoming json message
         try:
             data = json.loads(message)
@@ -177,23 +180,24 @@ class bfx_websocket(Thread):
                 return
         else:                                                       # Message is a list       | Data type
 
-            # print(data)                                 # Temporary
-
-            # Grab channel_name for data_handler identification
-            try:
-                channel_name = self._channel_ids[data[0]][0]
-            except:
-                print(self.__name + ' thread - Warning[Exception]! Unmapped channel for: ' + str(data[0]) + '.')
-                print(data)
-                return
-            # Pass data to data handler for processing
-            try:
-                self._data_handlers[channel_name](data)
-            except:
-                print(self.__name + ' thread - Warning[Exception]! Missing data handler for channel: "' +
-                      channel_name + '".')
-                print(data)
-                return
+            if data[1] == 'hb':                                     # Handle heart beats differently
+                self.__handle_data_heartbeat(data)
+            else:
+                # Grab channel_name for data_handler identification
+                try:
+                    channel_name = self._channel_ids[data[0]][0]
+                except:
+                    print(self.__name + ' thread - Warning[Exception]! Unmapped channel for: ' + str(data[0]) + '.')
+                    print(data)
+                    return
+                # Pass data to data handler for processing
+                try:
+                    self._data_handlers[channel_name](data)
+                except:
+                    print(self.__name + ' thread - Warning[Exception]! Missing data handler for channel: "' +
+                          channel_name + '".')
+                    print(data)
+                    return
 
     # ===================================== External Facing Functions ===================================== #
 
@@ -267,6 +271,14 @@ class bfx_websocket(Thread):
         print(self.__name + ' thread - Successful subscription to CHANNEL: "' + str(data['channel'])
               + '" | PAIR: "' + data['pair'] + '" | ChanID: ' + str(data['chanId']) + '.')
 
+    # ===================================== General Data Handlers ===================================== #
+
+    def __handle_data_heartbeat(self, data):
+
+        # TODO: Add proper heartbeat, ping/pong handler. Need a seperate thread for message monitoring
+        if False:
+            print(self.__name + ' thread - Heartbeat {currently ignored}.')
+
     # ===================================== Ticker Data handlers ===================================== #
 
     def __process_data_ticker(self, data):
@@ -285,31 +297,62 @@ class bfx_websocket(Thread):
                   str(data[1]) + '".')
             print(data)
 
+    # Account Position Snapshots - Snapshot of positions that are created through margin borrowing
     def __handle_data_account_ps(self, data):
         # Todo: Add handler for position snapshot
         print(self.__name + ' thread - Position Snapshot received {currently ignored}.')
 
-
+    # Account Wallet Snapshot - Snapshot of what's current in the wallet
     def __handle_data_account_ws(self, data):
 
         # Wallet balances snapshot
         for balance in data[2]:
-            if balance[0] == 'exchange':
-                self.account_balances['exchange'][balance[1]] = balance[2]
-            elif balance[0] == 'trading':
-                self.account_balances['margin'][balance[1]] = balance[2]
-            elif balance[0] == 'deposit':
-                self.account_balances['funding'][balance[1]] = balance[2]
+            if balance[0] in ['exchange', 'margin', 'funding']:
+                self.account_balances[balance[0]] = balance[2]
             else:
                 print(self.__name + ' thread - Invalid account type received! Balance Snapshot: ' + str(balance))
 
+    # Account Orders Snapshot - Snapshot of currently active orders
     def __handle_data_account_os(self, data):
 
         # Order statuses snapshot
         print(self.__name + ' thread - Orders snapshot received! {currently ignored}')
-        # TODO: Add proper order status handling
+        # TODO: Add proper order snapshot handling
 
-    def __handle_data_account_hb(self, data):
-        # TODO: Add proper heartbeat, ping/pong handler. Need a seperate thread for message monitoring
-        if False:
-            print(self.__name + ' thread - Heartbeat {currently ignored}.')
+    # Account Funding Loans Snapshot - Snapshot of funds that have been loaned from other people
+    def __handle_data_account_fls(self, data):
+
+        # We currently don't care about funding loans because we will never borrow
+        print(self.__name + ' thread - Funding loans snapshot received! {currently ignored}')
+
+    # Account Funding Offers Snapshot - Snapshot of active funding provided to other people
+    def __handle_data_account_fos(self, data):
+
+        # TODO: Add proper funding snapshot handling
+        print(self.__name + ' thread - Funding Offers Snapshot received {currently ignored}.')
+
+    # Account Funding Credits Snapshot - Snapshot of all currently active funding
+    def __handle_data_account_fcs(self, data):
+
+        for position in data[2]:
+            self.__update_funding_positions(position)
+
+    # ===================================== Internal Functions ===================================== #
+
+    # Processes data from account funding credits  - Includes MySQL Data storage
+    def __update_funding_positions(self, new_position):
+
+        self.account_funding_positions[new_position[0]] = {
+            'symbol' : new_position[1],
+            'side'   : new_position[2],
+            'amount' : new_position[5],
+            'status' : new_position[7],
+            'rate'   : new_position[11],
+            'period' : new_position[12],
+            'created': datetime.datetime.utcfromtimestamp(new_position[3] /1000.0),
+            'open'   : datetime.datetime.utcfromtimestamp(new_position[13]/1000.0),
+            'payout' : datetime.datetime.utcfromtimestamp(new_position[14] /1000.0),
+            'update' : datetime.datetime.utcfromtimestamp(new_position[4] /1000.0)
+        }
+
+        # Todo: Add MySQL integration to store the update/snapshot in a database
