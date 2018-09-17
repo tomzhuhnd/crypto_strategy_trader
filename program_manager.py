@@ -10,6 +10,7 @@ import front_end_manager
 
 # Websocket packages
 import ws_bfx_handler
+import strategy_manager
 
 class program_master(Thread):
 
@@ -73,6 +74,11 @@ class program_master(Thread):
         self._bfx_thread.start()
         self.thread_status['bfx_ws'] = True
 
+        # Start strategy manager Thread
+        self._strategy_thread = strategy_manager.strategy_manager(self._bfx_thread.data_queue)
+        self._strategy_thread.start()
+        self.thread_status['strategy'] = True
+
         # # Wait for websocket to establish connections before sending subscription requests
         time.sleep(1)
         self._bfx_thread.subscribe_to_channel('trades', 'fBTC')
@@ -91,6 +97,7 @@ class program_master(Thread):
             print(self.__name + ' thread - Main Program shutting down, killing child threads.')
             self._gui_thread.stop()
             self._bfx_thread.stop()
+            self._strategy_thread.stop()
             time.sleep(0.5)
             print(self.__name + ' thread - Exiting.')
             return

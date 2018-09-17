@@ -53,7 +53,8 @@ class bfx_websocket(Thread):
         # Data handlers
         self._data_handlers = {
             'account': self.__process_data_account,
-            'ticker':  self.__process_data_ticker
+            'ticker':  self.__process_data_ticker,
+            'trades':  self.__process_data_trades
         }
 
         # Data handlers
@@ -65,6 +66,9 @@ class bfx_websocket(Thread):
             'fls': self.__handle_data_account_fls,
             'fos': self.__handle_data_account_fos
         }
+
+        # Data queues
+        self.data_queue = Queue()
 
         # Data Grids
         self.account_balances = {'exchange': {}, 'margin': {}, 'funding': {}}
@@ -185,17 +189,17 @@ class bfx_websocket(Thread):
             else:
                 # Grab channel_name for data_handler identification
                 try:
-                    channel_name = self._channel_ids[data[0]][0]
+                    channel_pair = self._channel_ids[data[0]]
                 except:
                     print(self.__name + ' thread - Warning[Exception]! Unmapped channel for: ' + str(data[0]) + '.')
                     print(data)
                     return
                 # Pass data to data handler for processing
                 try:
-                    self._data_handlers[channel_name](data)
+                    self._data_handlers[channel_pair[0]](data, channel_pair)
                 except:
-                    print(self.__name + ' thread - Warning[Exception]! Missing data handler for channel: "' +
-                          channel_name + '".')
+                    print(self.__name + ' thread - Warning[Exception]! Missing data handler for channel pair: "' +
+                          str(channel_pair) + '".')
                     print(data)
                     return
 
@@ -265,10 +269,10 @@ class bfx_websocket(Thread):
 
     def __handle_event_subscribed(self, data):
 
-        self._channel_ids[data['chanId']] = (data['channel'], data['pair'])
-        self._channel_ids[(data['channel'], data['pair'])] = data['chanId']
+        self._channel_ids[data['chanId']] = (data['channel'], data['symbol'])
+        self._channel_ids[(data['channel'], data['symbol'])] = data['chanId']
         print(self.__name + ' thread - Successful subscription to CHANNEL: "' + str(data['channel'])
-              + '" | PAIR: "' + data['pair'] + '" | ChanID: ' + str(data['chanId']) + '.')
+              + '" | PAIR: "' + data['symbol'] + '" | ChanID: ' + str(data['chanId']) + '.')
 
     # ===================================== General Data Handlers ===================================== #
 
@@ -280,14 +284,29 @@ class bfx_websocket(Thread):
 
     # ===================================== Ticker Data handlers ===================================== #
 
-    def __process_data_ticker(self, data):
+    def __process_data_ticker(self, data, pair):
 
         print('Ticker data received')
         print(data)
 
+    def __process_data_trades(self, data, pair):
+
+        if pair[1][0] == 'f':
+            print('Received funding data')
+            print(data)
+
+            if isinstance(data[1], list):           # Snapshot of data
+                for lend in data[1]:
+                    print(lend)
+
+        elif pair[1][0] == 't':
+            print('Received trading data')
+        else:
+            print(self.__name + ' thread - Warning! Unrecognized pair type: "' + str(pair) + '".')
+
     # ===================================== Account Data handlers ===================================== #
 
-    def __process_data_account(self, data):
+    def __process_data_account(self, data, pair):
 
         try:
             self._data_account_handlers[data[1]](data)
@@ -348,10 +367,10 @@ class bfx_websocket(Thread):
             'status' : new_position[7],
             'rate'   : new_position[11],
             'period' : new_position[12],
-            'created': datetime.datetime.utcfromtimestamp(new_position[3] /1000.0),
-            'open'   : datetime.datetime.utcfromtimestamp(new_position[13]/1000.0),
-            'payout' : datetime.datetime.utcfromtimestamp(new_position[14] /1000.0),
-            'update' : datetime.datetime.utcfromtimestamp(new_position[4] /1000.0)
+            'created': new_position[3],
+            'open'   : new_position[13],
+            'payout' : new_position[14],
+            'update' : new_position[4]
         }
 
         # Todo: Add MySQL integration to store the update/snapshot in a database
