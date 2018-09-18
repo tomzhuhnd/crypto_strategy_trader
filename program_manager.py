@@ -79,7 +79,7 @@ class program_master(Thread):
         self._strategy_thread.start()
         self.thread_status['strategy'] = True
 
-        # # Wait for websocket to establish connections before sending subscription requests
+        # Wait for websocket to establish connections before sending subscription requests
         time.sleep(1)
         self._bfx_thread.subscribe_to_channel('trades', 'fBTC')
 

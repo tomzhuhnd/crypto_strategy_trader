@@ -71,7 +71,6 @@ class bfx_websocket(Thread):
         self.data_queue = Queue()
 
         # Data Grids
-        self.account_balances = {'exchange': {}, 'margin': {}, 'funding': {}}
         self.account_orders = {}
         self.account_funding_positions = {}
 
@@ -289,15 +288,18 @@ class bfx_websocket(Thread):
         print('Ticker data received')
         print(data)
 
+    # ===================================== Trades Data handlers ===================================== #
+
     def __process_data_trades(self, data, pair):
 
         if pair[1][0] == 'f':
-            print('Received funding data')
-            print(data)
 
             if isinstance(data[1], list):           # Snapshot of data
                 for lend in data[1]:
                     print(lend)
+            else:                                   # Update of data
+                if data[1] == 'ftu':
+                    print(data[2])
 
         elif pair[1][0] == 't':
             print('Received trading data')
@@ -309,48 +311,48 @@ class bfx_websocket(Thread):
     def __process_data_account(self, data, pair):
 
         try:
-            self._data_account_handlers[data[1]](data)
+            self._data_account_handlers[data[1]](data, pair)
         except:
             print(self.__name + ' thread - Warning [Exception]! Missing handler for account update type: "' +
                   str(data[1]) + '".')
             print(data)
 
     # Account Position Snapshots - Snapshot of positions that are created through margin borrowing
-    def __handle_data_account_ps(self, data):
+    def __handle_data_account_ps(self, data, pair):
         # Todo: Add handler for position snapshot
         print(self.__name + ' thread - Position Snapshot received {currently ignored}.')
 
     # Account Wallet Snapshot - Snapshot of what's current in the wallet
-    def __handle_data_account_ws(self, data):
+    def __handle_data_account_ws(self, data, pair):
 
         # Wallet balances snapshot
         for balance in data[2]:
             if balance[0] in ['exchange', 'margin', 'funding']:
-                self.account_balances[balance[0]] = balance[2]
+                self.data_queue.put((('account', 'wallet'), balance[0:3]))
             else:
                 print(self.__name + ' thread - Invalid account type received! Balance Snapshot: ' + str(balance))
 
     # Account Orders Snapshot - Snapshot of currently active orders
-    def __handle_data_account_os(self, data):
+    def __handle_data_account_os(self, data, pair):
 
         # Order statuses snapshot
         print(self.__name + ' thread - Orders snapshot received! {currently ignored}')
         # TODO: Add proper order snapshot handling
 
     # Account Funding Loans Snapshot - Snapshot of funds that have been loaned from other people
-    def __handle_data_account_fls(self, data):
+    def __handle_data_account_fls(self, data, pair):
 
         # We currently don't care about funding loans because we will never borrow
         print(self.__name + ' thread - Funding loans snapshot received! {currently ignored}')
 
-    # Account Funding Offers Snapshot - Snapshot of active funding provided to other people
-    def __handle_data_account_fos(self, data):
+    # Account Funding Offers Snapshot - Snapshot of active funding being offered to other people
+    def __handle_data_account_fos(self, data, pair):
 
         # TODO: Add proper funding snapshot handling
         print(self.__name + ' thread - Funding Offers Snapshot received {currently ignored}.')
 
     # Account Funding Credits Snapshot - Snapshot of all currently active funding
-    def __handle_data_account_fcs(self, data):
+    def __handle_data_account_fcs(self, data, pair):
 
         for position in data[2]:
             self.__update_funding_positions(position)
@@ -360,7 +362,8 @@ class bfx_websocket(Thread):
     # Processes data from account funding credits  - Includes MySQL Data storage
     def __update_funding_positions(self, new_position):
 
-        self.account_funding_positions[new_position[0]] = {
+        position_update = {
+            'offerId': new_position[0],
             'symbol' : new_position[1],
             'side'   : new_position[2],
             'amount' : new_position[5],
@@ -372,5 +375,4 @@ class bfx_websocket(Thread):
             'payout' : new_position[14],
             'update' : new_position[4]
         }
-
-        # Todo: Add MySQL integration to store the update/snapshot in a database
+        self.data_queue.put((('funding', 'position'), position_update))
