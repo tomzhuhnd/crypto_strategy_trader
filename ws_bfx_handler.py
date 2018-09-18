@@ -15,6 +15,7 @@ from api_keys import *
 
 # Load settings for websocket
 import ws_bfx_settings
+import logging_handler
 
 # URLs
 url_bfx = 'wss://api.bitfinex.com/ws/2'
@@ -83,14 +84,23 @@ class bfx_websocket(Thread):
         self.daemon = True
         print('done.')
 
+        # Create a logging object to store all incoming messages from the websocket
+        self.store_raw = False
+        if self.store_raw:
+            self.data_raw_log = logging_handler.setup_logger(self.__name, 'raw_data.log')
+
     def run(self):
         print(self.__name + ' thread - starting.')
+        if self.store_raw:
+            self.data_raw_log.info(self.__name + ' thread - starting.')
         self._connect()
 
     def stop(self):
 
         # Disconnect event
         self._disconnected.set()
+        if self.store_raw:
+            self.data_raw_log.info(self.__name + ' thread - stopped.')
         try:
             # Check ws connection, close if its open
             if self.ws:
@@ -175,6 +185,9 @@ class bfx_websocket(Thread):
 
         if isinstance(data, dict):                                  # Message is a dictionary | Event type
 
+            if self.store_raw:
+                self.data_raw_log.info(self.__name + ' thread - Raw event: ' + str(data))
+
             if data['event'] in self._event_handlers:
                 self._event_handlers[data['event']](data)
             else:
@@ -186,6 +199,10 @@ class bfx_websocket(Thread):
             if data[1] == 'hb':                                     # Handle heart beats differently
                 self.__handle_data_heartbeat(data)
             else:
+
+                if self.store_raw:
+                    self.data_raw_log.info(self.__name + ' thread - Raw data : ' + str(data))
+
                 # Grab channel_name for data_handler identification
                 try:
                     channel_pair = self._channel_ids[data[0]]
