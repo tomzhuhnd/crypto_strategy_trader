@@ -296,10 +296,10 @@ class bfx_websocket(Thread):
 
             if isinstance(data[1], list):           # Snapshot of data
                 for lend in data[1]:
-                    print(lend)
+                    self.data_queue.put((('funding', 'trade'), lend))
             else:                                   # Update of data
                 if data[1] == 'ftu':
-                    print(data[2])
+                    self.data_queue.put((('funding', 'trade'), data[2]))
 
         elif pair[1][0] == 't':
             print('Received trading data')
@@ -375,4 +375,4 @@ class bfx_websocket(Thread):
             'payout' : new_position[14],
             'update' : new_position[4]
         }
-        self.data_queue.put((('funding', 'position'), position_update))
+        self.data_queue.put((('lending', 'position'), position_update))
