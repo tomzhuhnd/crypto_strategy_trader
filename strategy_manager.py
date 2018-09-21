@@ -5,6 +5,8 @@ import time, datetime
 from multiprocessing import Queue
 from threading import Thread, Event, Timer
 
+# Internal libraries
+import time_series_objects
 
 class strategy_manager(Thread):
 
@@ -33,13 +35,18 @@ class strategy_manager(Thread):
                 'position': self.__update_lending_position
             },
             'funding': {
-                'trade': self.__update_funding_trade
+                'trades': self.__update_funding_trade
             }
         }
 
         # Data grids
         self.account_balances = {'exchange': {}, 'margin': {}, 'funding': {}}
         self.funding_positions = {'lend': {}, 'loan': {}}
+
+        # Time series data objects
+        self.funding_rates_hourly = {
+            'fBTC': time_series_objects.time_series_vol_weighted_data_grid('fBTC', 'minutes', '1', '60')
+        }
 
         # Establish as new independent thread
         super(strategy_manager, self).__init__()
@@ -89,5 +96,10 @@ class strategy_manager(Thread):
 
         # TODO: Add MySQL integration to handle storage of these updates
 
-    def __update_funding_trade(self, data):
-        print(data)
+    # ================================= Funding Trade Processing ================================= #
+    #
+    # def __update_funding_trades(self, data):
+    #
+    #
+    #
+    # # Sub functions for funding trade processsing
